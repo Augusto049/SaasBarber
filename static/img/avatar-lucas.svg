@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <radialGradient id="avBg1" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#334155" />
+      <stop offset="80%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#020617" />
+    </radialGradient>
+    <linearGradient id="goldRing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="95" fill="url(#avBg1)" stroke="url(#goldRing)" stroke-width="4" />
+  <!-- Cabeça e Barba -->
+  <circle cx="100" cy="85" r="32" fill="#F87171" opacity="0.9" />
+  <!-- Cabelo Fade Moderno -->
+  <path d="M 68 80 C 68 55, 132 55, 132 80 C 125 65, 75 65, 68 80 Z" fill="#1E293B" />
+  <!-- Barba Desenhada -->
+  <path d="M 72 88 C 72 118, 128 118, 128 88 C 122 108, 78 108, 72 88 Z" fill="#0F172A" />
+  <path d="M 85 95 C 100 90, 115 95, 115 100 C 100 97, 85 100, 85 95 Z" fill="#0F172A" />
+  <!-- Avental / Camisa Polo de Barbeiro -->
+  <path d="M 45 170 C 45 130, 155 130, 155 170 Z" fill="#1E293B" stroke="url(#goldRing)" stroke-width="1.5" />
+  <!-- Gravata Borboleta -->
+  <polygon points="92,130 100,135 92,140" fill="url(#goldRing)" />
+  <polygon points="108,130 100,135 108,140" fill="url(#goldRing)" />
+  <circle cx="100" cy="135" r="2.5" fill="#FFFBEB" />
+</svg>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagamento Não Concluído - BarberSaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 text-center shadow-2xl">
+        <div class="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-3xl flex items-center justify-center mx-auto mb-5 shadow-lg">
+            <i class="fa-solid fa-xmark"></i>
+        </div>
+
+        <span class="text-xs font-bold text-red-400 uppercase tracking-widest bg-red-500/10 px-3 py-1 rounded-full">
+            Pagamento Pendente ou Recusado
+        </span>
+
+        <h2 class="text-2xl font-black text-white mt-3">Não foi possível concluir</h2>
+        <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+            O pagamento não foi aprovado pelo emissor do seu cartão ou foi cancelado. Você pode tentar novamente ou optar por pagar diretamente na barbearia.
+        </p>
+
+        {% if appointment %}
+        <div class="mt-6">
+            <a href="/b/{{ appointment.barbershop.slug }}" class="inline-flex items-center justify-center w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition-colors border border-slate-700">
+                <span>Voltar e Tentar Novamente</span>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+</body>
+</html>

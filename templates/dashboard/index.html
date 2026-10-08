@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ barbershop.name }}{% endblock %}
+{% block page_title %}Painel de Controle{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Banner do Link Público da Barbearia -->
+    <div class="bg-gradient-to-r from-amber-500/10 via-dark-800 to-dark-800 border border-amber-500/30 rounded-2xl p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-start md:items-center space-x-3.5">
+            <div class="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl shrink-0">
+                <i class="fa-solid fa-store"></i>
+            </div>
+            <div>
+                <h3 class="text-sm md:text-base font-bold text-white flex items-center gap-2">
+                    <span>Link Público da sua Barbearia</span>
+                    <span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-semibold">Online</span>
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">
+                    Envie para seus clientes agendarem e assinarem o plano pelo WhatsApp.
+                </p>
+                <div class="mt-2 flex items-center gap-2">
+                    <code id="public-link-text" class="text-xs bg-dark-900 px-2.5 py-1 rounded text-amber-300 font-mono select-all">
+                        {{ request.base_url }}b/{{ barbershop.slug }}
+                    </code>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-2.5 shrink-0">
+            <button onclick="copyPublicLink()" class="px-3.5 py-2 bg-dark-700 hover:bg-dark-600 text-slate-200 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors border border-dark-600">
+                <i class="fa-regular fa-copy"></i>
+                <span id="copy-btn-text">Copiar Link</span>
+            </button>
+            <a href="/b/{{ barbershop.slug }}" target="_blank" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-dark-900 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors shadow">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                <span>Visitar Página</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Cards de Métricas Principais -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Faturamento Hoje -->
+        <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider">Faturamento Hoje</span>
+                <span class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-calendar-day"></i>
+                </span>
+            </div>
+            <div class="text-2xl font-black text-white">
+                R$ {{ "%.2f"|format(today_income)|replace('.', ',') }}
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                <i class="fa-solid fa-scissors text-amber-400 text-[10px]"></i>
+                <span>{{ today_appointments|length }} agendamentos hoje</span>
+            </p>
+        </div>
+
+        <!-- Faturamento Mês -->
+        <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider">Faturamento Mês</span>
+                <span class="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-sack-dollar"></i>
+                </span>
+            </div>
+            <div class="text-2xl font-black text-white">
+                R$ {{ "%.2f"|format(month_income)|replace('.', ',') }}
+            </div>
+            <div class="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
+                <span>Lucro Líquido:</span>
+                <span class="font-bold {% if net_profit >= 0 %}text-emerald-400{% else %}text-red-400{% endif %}">
+                    R$ {{ "%.2f"|format(net_profit)|replace('.', ',') }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Clube de Assinatura -->
+        <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider">Clube de Assinantes</span>
+                <span class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-crown"></i>
+                </span>
+            </div>
+            <div class="text-2xl font-black text-amber-400">
+                {{ active_subscriptions_count }} <span class="text-xs font-normal text-slate-400">ativos</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                <span>MRR Recorrente:</span>
+                <strong class="text-white">R$ {{ "%.2f"|format(mrr_total)|replace('.', ',') }}/mês</strong>
+            </p>
+        </div>
+
+        <!-- Comissões a Pagar -->
+        <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider">Comissões Pendentes</span>
+                <span class="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-hand-holding-dollar"></i>
+                </span>
+            </div>
+            <div class="text-2xl font-black text-orange-400">
+                R$ {{ "%.2f"|format(commissions_pending)|replace('.', ',') }}
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">
+                <a href="/finances" class="text-amber-400 hover:underline">Ver repasses por barbeiro &rarr;</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Seção de Agendamentos de Hoje e Movimentações Recentes -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Lista de Agendamentos de Hoje (2 Colunas) -->
+        <div class="lg:col-span-2 bg-dark-800 border border-dark-600 rounded-2xl p-5 shadow-sm flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-calendar-check text-amber-400"></i>
+                    <h3 class="font-bold text-white text-base">Agendamentos de Hoje</h3>
+                </div>
+                <a href="/appointments" class="text-xs text-amber-400 hover:text-amber-300 font-semibold">
+                    Ver agenda completa &rarr;
+                </a>
+            </div>
+
+            {% if today_appointments %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-dark-600 text-slate-400 uppercase text-[10px]">
+                            <th class="pb-2.5">Horário</th>
+                            <th class="pb-2.5">Cliente</th>
+                            <th class="pb-2.5">Serviço</th>
+                            <th class="pb-2.5">Barbeiro</th>
+                            <th class="pb-2.5">Pagamento</th>
+                            <th class="pb-2.5 text-right">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-dark-700">
+                        {% for apt in today_appointments %}
+                        <tr class="hover:bg-dark-700/50 transition-colors">
+                            <td class="py-3 font-semibold text-white whitespace-nowrap">
+                                {{ apt.date_time.strftime('%H:%M') }}
+                            </td>
+                            <td class="py-3 font-medium text-slate-200">
+                                {{ apt.customer_name }}
+                                <div class="text-[10px] text-slate-400">{{ apt.customer_phone }}</div>
+                            </td>
+                            <td class="py-3 text-slate-300">
+                                {{ apt.service.name }}
+                                <div class="text-[10px] text-amber-400 font-semibold">R$ {{ "%.2f"|format(apt.total_price)|replace('.', ',') }}</div>
+                            </td>
+                            <td class="py-3 text-slate-300 whitespace-nowrap">
+                                {{ apt.barber.name }}
+                            </td>
+                            <td class="py-3 whitespace-nowrap">
+                                {% if apt.is_paid_in_advance or apt.payment_status == 'approved' %}
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center w-fit gap-1">
+                                    <i class="fa-solid fa-circle-check"></i> Pago MP
+                                </span>
+                                {% elif apt.payment_status == 'subscription' %}
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center w-fit gap-1">
+                                    <i class="fa-solid fa-crown"></i> Assinante
+                                </span>
+                                {% else %}
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-300">
+                                    No Local
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 text-right whitespace-nowrap">
+                                {% if apt.status != 'completed' and apt.status != 'canceled' %}
+                                <form action="/appointments/{{ apt.id }}/complete" method="POST" class="inline">
+                                    <input type="hidden" name="payment_method" value="cash">
+                                    <button type="submit" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-semibold transition-colors shadow">
+                                        Concluir
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span class="text-[11px] text-slate-500 font-medium capitalize">{{ apt.status }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400">
+                <i class="fa-regular fa-calendar text-3xl mb-2 text-slate-600"></i>
+                <p class="text-xs">Nenhum agendamento para hoje ainda.</p>
+                <a href="/appointments" class="mt-2 text-xs text-amber-400 hover:underline font-semibold">Agendar primeiro corte &rarr;</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Últimas Transações Financeiras (1 Coluna) -->
+        <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 shadow-sm flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-receipt text-amber-400"></i>
+                    <h3 class="font-bold text-white text-base">Últimas Finanças</h3>
+                </div>
+                <a href="/finances" class="text-xs text-amber-400 hover:text-amber-300 font-semibold">
+                    Ver tudo &rarr;
+                </a>
+            </div>
+
+            {% if recent_transactions %}
+            <div class="space-y-3 flex-1 overflow-y-auto max-h-[360px]">
+                {% for tx in recent_transactions %}
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-dark-900/60 border border-dark-700">
+                    <div class="flex items-center space-x-2.5 truncate">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center text-xs shrink-0
+                            {% if tx.type == 'income' %}bg-emerald-500/10 text-emerald-400
+                            {% elif tx.type == 'expense' %}bg-red-500/10 text-red-400
+                            {% else %}bg-orange-500/10 text-orange-400{% endif %}">
+                            <i class="fa-solid {% if tx.type == 'income' %}fa-arrow-down{% else %}fa-arrow-up{% endif %}"></i>
+                        </div>
+                        <div class="truncate">
+                            <p class="text-xs font-semibold text-slate-200 truncate">{{ tx.description }}</p>
+                            <p class="text-[10px] text-slate-400">{{ tx.date.strftime('%d/%m às %H:%M') }}</p>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <span class="text-xs font-bold {% if tx.type == 'income' %}text-emerald-400{% else %}text-red-400{% endif %}">
+                            {% if tx.type == 'income' %}+{% else %}-{% endif %} R$ {{ "%.2f"|format(tx.amount)|replace('.', ',') }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400">
+                <i class="fa-solid fa-coins text-3xl mb-2 text-slate-600"></i>
+                <p class="text-xs">Nenhuma movimentação registrada.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function copyPublicLink() {
+        const text = document.getElementById('public-link-text').innerText.trim();
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = document.getElementById('copy-btn-text');
+            const original = btn.innerText;
+            btn.innerText = "Copiado!";
+            setTimeout(() => { btn.innerText = original; }, 2000);
+        });
+    }
+</script>
+{% endblock %}

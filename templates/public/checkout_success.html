@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagamento Confirmado - BarberSaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 text-center shadow-2xl">
+        <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-3xl flex items-center justify-center mx-auto mb-5 shadow-lg">
+            <i class="fa-solid fa-check"></i>
+        </div>
+
+        <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full">
+            Pagamento Aprovado
+        </span>
+
+        <h2 class="text-2xl font-black text-white mt-3">Agendamento Garantido!</h2>
+        <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+            Seu pagamento antecipado foi processado com sucesso pelo Mercado Pago. Seu horário com o barbeiro está confirmado!
+        </p>
+
+        {% if appointment %}
+        <div class="my-6 p-4 rounded-2xl bg-slate-800/80 border border-slate-700/80 text-xs text-left space-y-2">
+            <div class="flex justify-between">
+                <span class="text-slate-400">Barbearia:</span>
+                <span class="font-bold text-white">{{ appointment.barbershop.name }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">Serviço:</span>
+                <span class="text-slate-200">{{ appointment.service.name }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">Barbeiro:</span>
+                <span class="text-slate-200">{{ appointment.barber.name }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">Data e Horário:</span>
+                <span class="font-bold text-amber-400">{{ appointment.date_time.strftime('%d/%m/%Y às %H:%M') }}</span>
+            </div>
+            <div class="flex justify-between pt-2 border-t border-slate-700">
+                <span class="text-slate-400">Valor Pago:</span>
+                <span class="font-bold text-emerald-400">R$ {{ "%.2f"|format(appointment.total_price)|replace('.', ',') }}</span>
+            </div>
+        </div>
+
+        <a href="/b/{{ appointment.barbershop.slug }}" class="inline-flex items-center justify-center w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition-colors shadow-md">
+            <span>Voltar para a Página da Barbearia</span>
+        </a>
+        {% endif %}
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ barbershop.name }} - Agendamento & Clube de Assinatura</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            950: '#060911',
+                            900: '#090d16',
+                            800: '#0f172a',
+                            700: '#1e293b',
+                            600: '#334155'
+                        },
+                        amber: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        },
+                        mp: {
+                            blue: '#009ee3',
+                            dark: '#007bb3'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script defer src="/static/js/booking-calendar.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-dark-950 text-slate-100 min-h-screen font-sans antialiased" x-data="{ activeTab: 'booking', subscribeModal: false, selectedPlan: {} }">
+
+    <!-- Navbar Pública -->
+    <header class="bg-dark-900/90 backdrop-blur border-b border-dark-700 sticky top-0 z-40">
+        <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <img src="/static/img/dom-augusto-logo.svg" alt="{{ barbershop.name }}" class="w-11 h-11 rounded-full border border-amber-500/50 shadow-md object-contain bg-dark-900 p-0.5">
+                <div>
+                    <h1 class="font-extrabold text-base md:text-lg text-white leading-tight">{{ barbershop.name }}</h1>
+                    <span class="text-[11px] text-amber-400 font-semibold">Agendamentos & Clube VIP</span>
+                </div>
+            </div>
+
+            {% if barbershop.phone %}
+            <a href="https://wa.me/55{{ barbershop.phone|replace(' ', '')|replace('-', '')|replace('(', '')|replace(')', '') }}" target="_blank"
+                class="inline-flex items-center space-x-2 text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow">
+                <i class="fa-brands fa-whatsapp text-sm"></i>
+                <span class="hidden sm:inline">WhatsApp</span>
+            </a>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Notificações de Sucesso -->
+    <div class="max-w-5xl mx-auto px-4 pt-4">
+        {% if booked %}
+        <div class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center space-x-3 mb-4">
+            <i class="fa-solid fa-circle-check text-lg"></i>
+            <div>
+                <strong class="block font-bold">Agendamento Solicitado com Sucesso!</strong>
+                <span>Entraremos em contato para confirmar ou aguardamos você no horário marcado.</span>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if subscribed %}
+        <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs flex items-center space-x-3 mb-4">
+            <i class="fa-solid fa-crown text-lg"></i>
+            <div>
+                <strong class="block font-bold">Parabéns! Sua assinatura do Clube está ativa!</strong>
+                <span>Agora você pode agendar seus cortes sempre que quiser.</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Hero / Banner da Barbearia -->
+    <section class="max-w-5xl mx-auto px-4 py-8">
+        <div class="bg-gradient-to-b from-dark-800 to-dark-900 border border-dark-700 rounded-3xl p-6 md:p-10 shadow-2xl relative overflow-hidden">
+            <!-- Background Banner Ilustrado -->
+            <div class="absolute inset-0 z-0 bg-cover bg-center opacity-25 pointer-events-none" style="background-image: url('/static/img/hero-banner.svg');"></div>
+            
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                <div class="max-w-xl">
+                    <span class="text-xs font-bold tracking-widest text-amber-400 uppercase bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full inline-block mb-3">
+                        Barbearia Oficial
+                    </span>
+                    <h2 class="text-2xl md:text-4xl font-black text-white leading-tight">
+                        {{ barbershop.name }}
+                    </h2>
+                    <p class="text-xs md:text-sm text-slate-300 mt-2 leading-relaxed">
+                        {{ barbershop.description or 'A excelência em cortes masculinos, barba alinhada e cuidados especiais para o seu visual.' }}
+                    </p>
+
+                    <div class="mt-4 flex flex-wrap items-center gap-4 text-xs text-slate-400">
+                        {% if barbershop.address %}
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-location-dot text-amber-400"></i>
+                            <span>{{ barbershop.address }}</span>
+                        </span>
+                        {% endif %}
+                        {% if barbershop.phone %}
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-phone text-amber-400"></i>
+                            <span>{{ barbershop.phone }}</span>
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Emblema Logo em Destaque -->
+                <div class="shrink-0 flex items-center justify-center">
+                    <img src="/static/img/dom-augusto-logo.svg" alt="{{ barbershop.name }}" 
+                        class="w-28 h-28 md:w-36 md:h-36 rounded-full border-2 border-amber-400/80 shadow-2xl bg-dark-900/90 p-1.5 object-contain hover:scale-105 transition-all">
+                </div>
+            </div>
+
+            <!-- Navegação por Abas -->
+            <div class="mt-8 pt-6 border-t border-dark-700/80 flex flex-wrap gap-2">
+                <button 
+                    @click="activeTab = 'booking'"
+                    :class="activeTab === 'booking' ? 'bg-amber-500 text-dark-950 font-bold' : 'bg-dark-700 text-slate-300 hover:bg-dark-600'"
+                    class="px-4 py-2 rounded-xl text-xs transition-colors flex items-center space-x-2">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    <span>Agendar Horário</span>
+                </button>
+
+                <button 
+                    @click="activeTab = 'plans'"
+                    :class="activeTab === 'plans' ? 'bg-amber-500 text-dark-950 font-bold' : 'bg-dark-700 text-slate-300 hover:bg-dark-600'"
+                    class="px-4 py-2 rounded-xl text-xs transition-colors flex items-center space-x-2">
+                    <i class="fa-solid fa-crown"></i>
+                    <span>Clube de Assinatura (Cortes Ilimitados)</span>
+                </button>
+
+                <button 
+                    @click="activeTab = 'prices'"
+                    :class="activeTab === 'prices' ? 'bg-amber-500 text-dark-950 font-bold' : 'bg-dark-700 text-slate-300 hover:bg-dark-600'"
+                    class="px-4 py-2 rounded-xl text-xs transition-colors flex items-center space-x-2">
+                    <i class="fa-solid fa-tags"></i>
+                    <span>Tabela de Serviços</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ABA 1: FORMULÁRIO DE AGENDAMENTO -->
+    <main class="max-w-5xl mx-auto px-4 pb-16">
+        <div x-show="activeTab === 'booking'" class="space-y-6">
+            <div class="bg-dark-800 border border-dark-700 rounded-2xl p-6 md:p-8 shadow-xl max-w-2xl mx-auto">
+                <div class="text-center mb-6">
+                    <h3 class="text-xl font-extrabold text-white">Agende Seu Corte ou Barba</h3>
+                    <p class="text-xs text-slate-400 mt-1">Escolha o serviço, seu profissional de preferência e horário</p>
+                </div>
+
+                <form action="/b/{{ barbershop.slug }}/book" method="POST" class="space-y-4"
+                    x-data='bookingDatePicker({{ schedule_data|tojson }}, {{ service_durations|tojson }})'
+                    @submit="if (!selectedDate || !selectedTime) { $event.preventDefault(); error = 'Escolha o dia e o horário do atendimento.' }">
+                    <input type="hidden" name="date_str" :value="dateTimeValue">
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Selecione o Serviço</label>
+                        <select name="service_id" x-model="selectedServiceId" @change="selectedTime = ''" required class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                            {% for s in services %}
+                            <option value="{{ s.id }}">
+                                {{ s.name }} — R$ {{ "%.2f"|format(s.price)|replace('.', ',') }} ({{ s.duration_minutes }} min)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Escolha o Barbeiro</label>
+                        <select name="barber_id" required class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                            {% for b in barbers %}
+                            <option value="{{ b.id }}">{{ b.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="rounded-xl border border-dark-600 bg-dark-900/70 p-4 sm:p-5">
+                        <div x-show="step === 'date'">
+                            <div class="mb-4 flex items-center justify-between gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300">Escolha o dia</label>
+                                    <p class="mt-1 text-[11px] text-slate-500">Selecione uma data no calendário</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" @click="changeMonth(-1)" :disabled="previousMonthDisabled"
+                                        aria-label="Mês anterior"
+                                        class="grid h-9 w-9 place-items-center rounded-lg border border-dark-600 text-slate-300 transition hover:border-amber-500 hover:text-amber-400 disabled:cursor-not-allowed disabled:opacity-40">
+                                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                                    </button>
+                                    <span class="min-w-32 text-center text-sm font-bold capitalize text-white" x-text="monthLabel"></span>
+                                    <button type="button" @click="changeMonth(1)" aria-label="Próximo mês"
+                                        class="grid h-9 w-9 place-items-center rounded-lg border border-dark-600 text-slate-300 transition hover:border-amber-500 hover:text-amber-400">
+                                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-7 gap-1 text-center" role="grid" aria-label="Calendário">
+                                <template x-for="weekday in weekdays" :key="weekday">
+                                    <span class="py-2 text-[10px] font-bold uppercase text-slate-500" x-text="weekday"></span>
+                                </template>
+                                <template x-for="cell in calendarCells" :key="cell.key">
+                                    <div class="aspect-square">
+                                        <button type="button" x-show="cell.date" @click="selectDate(cell.date)"
+                                            :disabled="cell.date < todayString"
+                                            :aria-pressed="selectedDate === cell.date"
+                                            :class="selectedDate === cell.date ? 'bg-amber-500 text-dark-950 font-black' : cell.date === todayString ? 'border border-amber-500/60 text-amber-400 hover:bg-dark-700' : 'text-slate-200 hover:bg-dark-700'"
+                                            class="h-full w-full rounded-lg text-xs transition disabled:cursor-not-allowed disabled:text-slate-700 disabled:hover:bg-transparent"
+                                            x-text="cell.day"></button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div x-show="step === 'time'" x-cloak>
+                            <div class="mb-4 flex items-center justify-between gap-3">
+                                <div>
+                                    <span class="block text-xs font-semibold text-slate-300">Escolha o horário</span>
+                                    <p class="mt-1 text-xs font-bold capitalize text-amber-400" x-text="selectedDateLabel"></p>
+                                </div>
+                                <button type="button" @click="step = 'date'" class="text-[11px] font-semibold text-slate-400 underline decoration-dark-600 underline-offset-4 transition hover:text-white">
+                                    Alterar dia
+                                </button>
+                            </div>
+                            <label for="appointment-time" class="mb-1.5 block text-[11px] text-slate-400">Horário do atendimento</label>
+                            <select id="appointment-time" x-model="selectedTime" @change="error = ''" required
+                                class="w-full rounded-lg border border-dark-600 bg-dark-800 px-3.5 py-3 text-sm text-white focus:border-amber-500 focus:outline-none">
+                                <option value="" disabled>Selecione um horário</option>
+                                <template x-for="time in timeOptions" :key="time">
+                                    <option :value="time" x-text="time"></option>
+                                </template>
+                            </select>
+                            <p x-show="timeOptions.length === 0" class="mt-2 text-xs text-slate-400">Não há horários de atendimento configurados para este dia.</p>
+                        </div>
+
+                        <p x-show="error" x-text="error" role="alert" class="mt-3 text-xs text-rose-400"></p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Seu Nome Completo</label>
+                            <input type="text" name="customer_name" required placeholder="Ex: Roberto Lima"
+                                class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Seu WhatsApp</label>
+                            <input type="text" name="customer_phone" required placeholder="(11) 98888-7777"
+                                class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Seu E-mail (opcional)</label>
+                        <input type="email" name="customer_email" placeholder="seu@email.com"
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+
+                    <!-- Escolha de Pagamento: Antecipar com Mercado Pago ou Pagar no Local -->
+                    <div class="pt-3 border-t border-dark-700">
+                        <label class="block text-xs font-bold text-white mb-2">Forma de Pagamento</label>
+                        
+                        <div class="space-y-2">
+                            <label class="flex items-center p-3 rounded-xl bg-dark-900 border border-dark-600 cursor-pointer hover:border-mp-blue transition-colors">
+                                <input type="radio" name="pay_online" value="true" checked class="text-mp-blue focus:ring-0">
+                                <div class="ml-3 flex-1 flex items-center justify-between">
+                                    <div>
+                                        <span class="text-xs font-bold text-white block flex items-center gap-1.5">
+                                            <span>Antecipar Pagamento Online</span>
+                                            <span class="text-[10px] bg-mp-blue/20 text-mp-blue px-2 py-0.5 rounded font-bold">PIX / Cartão</span>
+                                        </span>
+                                        <span class="text-[11px] text-slate-400">Garanta seu horário pagando com segurança via Mercado Pago</span>
+                                    </div>
+                                    <i class="fa-solid fa-shield-halved text-mp-blue text-lg"></i>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center p-3 rounded-xl bg-dark-900 border border-dark-600 cursor-pointer hover:border-slate-500 transition-colors">
+                                <input type="radio" name="pay_online" value="false" class="text-amber-500 focus:ring-0">
+                                <div class="ml-3 flex-1">
+                                    <span class="text-xs font-bold text-white block">Pagar no Local</span>
+                                    <span class="text-[11px] text-slate-400">Pague direto na recepção da barbearia após o corte</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="pt-4">
+                        <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-dark-950 font-extrabold rounded-xl text-sm transition-all shadow-xl shadow-amber-500/20 flex items-center justify-center space-x-2">
+                            <span>Confirmar Agendamento</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ABA 2: CLUBE DE ASSINATURA -->
+        <div x-show="activeTab === 'plans'" class="space-y-6" x-cloak>
+            <div class="text-center max-w-xl mx-auto mb-8">
+                <span class="text-xs font-bold text-amber-400 uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+                    Economize Todo Mês
+                </span>
+                <h3 class="text-2xl md:text-3xl font-black text-white mt-2">Clube de Assinatura da Barbearia</h3>
+                <p class="text-xs md:text-sm text-slate-400 mt-1">
+                    Escolha um plano mensal e aproveite os serviços incluídos durante todo o período da assinatura.
+                </p>
+            </div>
+
+            {% if plans %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for plan in plans %}
+                <div class="bg-dark-800 border-2 border-amber-500/30 rounded-3xl p-6 md:p-8 flex flex-col justify-between hover:border-amber-400 transition-all shadow-xl relative group">
+                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-dark-950 text-[10px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full shadow">
+                        Plano Mensal
+                    </div>
+
+                    <div>
+                        <h4 class="text-xl font-black text-white mt-2">{{ plan.name }}</h4>
+                        <p class="text-xs text-slate-400 mt-1">{{ plan.description or 'Cortes ilimitados ou semanais com valor único fixo.' }}</p>
+
+                        <div class="my-6 py-4 border-y border-dark-700">
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-sm text-slate-400">R$</span>
+                                <span class="text-4xl font-black text-amber-400">{{ "%.2f"|format(plan.price)|replace('.', ',') }}</span>
+                                <span class="text-xs text-slate-400">/mês</span>
+                            </div>
+                            <span class="text-xs text-emerald-400 font-bold block mt-1">
+                                {% if plan.included_cuts_per_month >= 999 %}
+                                <i class="fa-solid fa-infinity"></i> Cortes Ilimitados
+                                {% else %}
+                                <i class="fa-solid fa-check"></i> Até {{ plan.included_cuts_per_month }} cortes/mês
+                                {% endif %}
+                            </span>
+                        </div>
+
+                        <div class="space-y-2.5 text-xs text-slate-300">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-circle-check text-amber-400"></i>
+                                <span>{{ plan.included_services_text }}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-circle-check text-amber-400"></i>
+                                <span>Sem fidelidade: cancele quando quiser</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-circle-check text-amber-400"></i>
+                                <span>Cobrança segura automática via Mercado Pago</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8">
+                        <button 
+                            @click="selectedPlan = { id: {{ plan.id }}, name: '{{ plan.name|replace('\'', '\\\'') }}', price: {{ plan.price }} }; subscribeModal = true"
+                            class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-dark-950 font-extrabold rounded-xl text-xs transition-all shadow-lg flex items-center justify-center space-x-2">
+                            <span>Assinar Este Plano</span>
+                            <i class="fa-solid fa-arrow-right text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="bg-dark-800 border border-dark-700 rounded-2xl p-8 text-center text-slate-400 max-w-md mx-auto">
+                <i class="fa-solid fa-crown text-3xl mb-2 text-slate-600"></i>
+                <p class="text-xs">Nenhum plano disponível no momento.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ABA 3: TABELA DE PREÇOS COMPLETA -->
+        <div x-show="activeTab === 'prices'" class="space-y-6" x-cloak>
+            <div class="max-w-2xl mx-auto bg-dark-800 border border-dark-700 rounded-2xl p-6 md:p-8 shadow-xl">
+                <h3 class="text-lg font-extrabold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-tags text-amber-400"></i>
+                    <span>Tabela Oficial de Serviços</span>
+                </h3>
+
+                <div class="divide-y divide-dark-700">
+                    {% for s in services %}
+                    <div class="py-4 flex items-center justify-between">
+                        <div>
+                            <h4 class="font-bold text-white text-sm">{{ s.name }}</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">{{ s.description or 'Atendimento profissional e higienizado.' }}</p>
+                            <span class="text-[11px] text-slate-500 mt-1 block">
+                                <i class="fa-regular fa-clock text-amber-400"></i> Duração: ~{{ s.duration_minutes }} minutos
+                            </span>
+                        </div>
+                        <div class="text-right pl-4">
+                            <span class="text-lg font-black text-amber-400">R$ {{ "%.2f"|format(s.price)|replace('.', ',') }}</span>
+                            <button @click="activeTab = 'booking'" class="block mt-1 text-[11px] text-slate-300 hover:text-amber-400 font-semibold underline">
+                                Agendar
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL: Assinatura do Plano (Mercado Pago) -->
+    <div x-show="subscribeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" x-cloak>
+        <div @click.away="subscribeModal = false" class="bg-dark-800 border border-dark-600 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-crown"></i>
+                    </div>
+                    <h3 class="font-bold text-white text-base">Assinar Clube</h3>
+                </div>
+                <button @click="subscribeModal = false" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-3 bg-dark-900 rounded-xl border border-dark-700 mb-4 flex justify-between items-center text-xs">
+                <div>
+                    <span class="text-slate-400 block" x-text="selectedPlan.name"></span>
+                    <strong class="text-amber-400 text-sm" x-text="'R$ ' + selectedPlan.price?.toFixed(2) + ' / mês'"></strong>
+                </div>
+                <span class="text-[10px] bg-mp-blue/20 text-mp-blue px-2 py-0.5 rounded font-bold">Mercado Pago</span>
+            </div>
+
+            <form :action="'/b/{{ barbershop.slug }}/subscribe'" method="POST" class="space-y-4">
+                <input type="hidden" name="plan_id" :value="selectedPlan.id">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Seu Nome Completo</label>
+                    <input type="text" name="customer_name" required placeholder="Ex: Felipe Ramos"
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Seu E-mail (para confirmação e nota)</label>
+                    <input type="email" name="customer_email" required placeholder="felipe@email.com"
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">WhatsApp</label>
+                    <input type="text" name="customer_phone" required placeholder="(11) 98888-7777"
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="p-3 bg-dark-900/60 rounded-xl border border-dark-700 text-[11px] text-slate-400 flex items-center space-x-2">
+                    <i class="fa-solid fa-lock text-mp-blue text-sm"></i>
+                    <span>Você será direcionado para o ambiente seguro do Mercado Pago para inserir os dados do cartão.</span>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" @click="subscribeModal = false" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded-xl text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-dark-950 rounded-xl text-xs font-bold shadow">
+                        Ir para o Pagamento &rarr;
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Rodapé -->
+    <footer class="border-t border-dark-800 py-8 text-center text-xs text-slate-500">
+        <div class="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p>&copy; {{ barbershop.name }} — Todos os direitos reservados.</p>
+            <div class="flex items-center space-x-2 text-[11px] text-slate-400">
+                <i class="fa-solid fa-shield-halved text-mp-blue"></i>
+                <span>Pagamentos processados com segurança por Mercado Pago Developers</span>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

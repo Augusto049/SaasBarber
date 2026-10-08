@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mercado Pago - Assinatura Mensal Recorrente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        mp: {
+                            blue: '#009ee3',
+                            dark: '#007bb3',
+                            light: '#e6f7fd'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen font-sans flex flex-col items-center justify-center p-4">
+
+    <!-- Header Simulação Mercado Pago Assinaturas -->
+    <div class="w-full max-w-lg mb-4 text-center">
+        <div class="inline-flex items-center space-x-2 bg-mp-blue/10 border border-mp-blue/30 text-mp-dark px-3 py-1 rounded-full text-xs font-semibold">
+            <i class="fa-solid fa-repeat"></i>
+            <span>Mercado Pago Assinaturas Recorrentes (Simulador Integrado)</span>
+        </div>
+    </div>
+
+    <!-- Card de Assinatura -->
+    <div class="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+        <!-- Topo Azul Mercado Pago -->
+        <div class="bg-mp-blue px-6 py-4 flex items-center justify-between text-white">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-repeat text-xl"></i>
+                <span class="font-extrabold text-base tracking-wide">mercado pago</span>
+            </div>
+            <span class="text-xs font-semibold uppercase bg-white/20 px-2 py-0.5 rounded">Recorrência Mensal</span>
+        </div>
+
+        <div class="p-6 md:p-8 space-y-6">
+            <!-- Detalhes do Plano -->
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                    <span class="text-xs text-slate-500 block">{{ barbershop.name }}</span>
+                    <h3 class="font-bold text-slate-900 text-base">{{ plan.name }}</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">{{ plan.included_services_text }}</p>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs text-slate-400 block">Mensalidade</span>
+                    <span class="text-2xl font-black text-slate-900">R$ {{ "%.2f"|format(plan.price)|replace('.', ',') }}</span>
+                    <span class="text-[10px] text-slate-500 block">Cobrança todo mês</span>
+                </div>
+            </div>
+
+            <!-- Dados do Assinante -->
+            <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Assinante:</span>
+                    <span class="font-bold text-slate-800">{{ name }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">E-mail:</span>
+                    <span class="text-slate-700">{{ email }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Telefone:</span>
+                    <span class="text-slate-700">{{ phone }}</span>
+                </div>
+            </div>
+
+            <!-- Dados do Cartão (Simulação Mercado Pago) -->
+            <div class="space-y-3">
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Cartão de Crédito Cadastrado</label>
+                <div>
+                    <input type="text" value="•••• •••• •••• 4242" disabled
+                        class="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-300 rounded-xl text-xs font-mono text-slate-700">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="text" value="Validade: 12/29" disabled
+                        class="w-full px-3.5 py-2 bg-slate-100 border border-slate-300 rounded-xl text-xs font-mono text-slate-700">
+                    <input type="text" value="CVV: •••" disabled
+                        class="w-full px-3.5 py-2 bg-slate-100 border border-slate-300 rounded-xl text-xs font-mono text-slate-700">
+                </div>
+            </div>
+
+            <!-- Confirmação -->
+            <form action="/checkout/simulate-subscription/confirm" method="POST">
+                <input type="hidden" name="plan_id" value="{{ plan.id }}">
+                <input type="hidden" name="customer_name" value="{{ name }}">
+                <input type="hidden" name="customer_email" value="{{ email }}">
+                <input type="hidden" name="customer_phone" value="{{ phone }}">
+                <input type="hidden" name="payment_method" value="card">
+
+                <button type="submit" class="w-full py-3.5 bg-mp-blue hover:bg-mp-dark text-white font-bold rounded-xl text-sm transition-all shadow-md flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>Confirmar Assinatura Mensal (R$ {{ "%.2f"|format(plan.price)|replace('.', ',') }}/mês)</span>
+                </button>
+            </form>
+
+            <!-- Rodapé de Proteção -->
+            <div class="pt-3 border-t border-slate-200 text-center text-[11px] text-slate-500">
+                <p>Cancele quando quiser diretamente pelo painel ou solicitando à barbearia.</p>
+                <div class="mt-1 flex items-center justify-center space-x-1.5 text-emerald-600 font-medium">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>Dados de cartão 100% criptografados pelo Mercado Pago</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

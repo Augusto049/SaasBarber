@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}Barbeiros & Comissões - {{ barbershop.name }}{% endblock %}
+{% block page_title %}Barbeiros & Gestão de Comissões{% endblock %}
+
+{% block content %}
+<div x-data="{ newBarberModal: false, editBarberModal: false, payoutModal: false, currentBarber: {} }" class="space-y-6">
+
+    <!-- Cabeçalho -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-lg font-bold text-white">Equipe de Barbeiros</h3>
+            <p class="text-xs text-slate-400 mt-0.5">
+                Defina as porcentagens de comissão individuais por serviço e venda de produtos para cada barbeiro.
+            </p>
+        </div>
+        <button @click="newBarberModal = true" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-dark-900 font-bold rounded-xl text-xs flex items-center space-x-2 transition-all shadow-lg shadow-amber-500/20 shrink-0">
+            <i class="fa-solid fa-user-plus"></i>
+            <span>Cadastrar Barbeiro</span>
+        </button>
+    </div>
+
+    <!-- Lista de Barbeiros -->
+    {% if barbers_data %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {% for item in barbers_data %}
+        {% set b = item.barber %}
+        <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 flex flex-col justify-between hover:border-amber-500/40 transition-all shadow-sm">
+            <div>
+                <!-- Topo do Card -->
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-xl overflow-hidden border border-amber-500/40 shadow shrink-0 bg-dark-900 flex items-center justify-center">
+                            {% if 'Lucas' in b.name %}
+                            <img src="/static/img/avatar-lucas.svg" alt="{{ b.name }}" class="w-full h-full object-cover">
+                            {% elif 'Rafael' in b.name %}
+                            <img src="/static/img/avatar-rafael.svg" alt="{{ b.name }}" class="w-full h-full object-cover">
+                            {% elif 'Matheus' in b.name %}
+                            <img src="/static/img/avatar-matheus.svg" alt="{{ b.name }}" class="w-full h-full object-cover">
+                            {% elif b.avatar_url %}
+                            <img src="{{ b.avatar_url }}" alt="{{ b.name }}" class="w-full h-full object-cover">
+                            {% else %}
+                            <div class="w-full h-full bg-gradient-to-tr from-amber-600 to-amber-400 text-dark-900 font-black text-lg flex items-center justify-center">
+                                {{ b.name[0] }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-white text-base leading-tight">{{ b.name }}</h4>
+                            <span class="text-[11px] text-slate-400">{{ b.phone or 'Sem telefone' }}</span>
+                        </div>
+                    </div>
+                    {% if b.is_active %}
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Ativo</span>
+                    {% else %}
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-400">Inativo</span>
+                    {% endif %}
+                </div>
+
+                <!-- Configuração de Comissões -->
+                <div class="bg-dark-900/70 rounded-xl p-3 border border-dark-700 grid grid-cols-2 gap-2 text-center my-3">
+                    <div>
+                        <span class="text-[10px] text-slate-400 block uppercase">Comissão Serviços</span>
+                        <span class="text-base font-extrabold text-amber-400">{{ b.commission_percent }}%</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 block uppercase">Comissão Produtos</span>
+                        <span class="text-base font-extrabold text-sky-400">{{ b.product_commission_percent }}%</span>
+                    </div>
+                </div>
+
+                <!-- Saldo de Comissões -->
+                <div class="space-y-1.5 pt-2 text-xs">
+                    <div class="flex justify-between text-slate-400">
+                        <span>Total Ganho:</span>
+                        <span class="font-semibold text-slate-200">R$ {{ "%.2f"|format(item.total_earned)|replace('.', ',') }}</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400">
+                        <span>Já Repassado:</span>
+                        <span class="font-semibold text-emerald-400">R$ {{ "%.2f"|format(item.total_paid)|replace('.', ',') }}</span>
+                    </div>
+                    <div class="flex justify-between pt-1 border-t border-dark-700 font-bold">
+                        <span class="text-slate-300">Saldo a Pagar:</span>
+                        <span class="{% if item.balance > 0 %}text-orange-400{% else %}text-slate-400{% endif %}">
+                            R$ {{ "%.2f"|format(item.balance)|replace('.', ',') }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ações -->
+            <div class="mt-5 pt-3 border-t border-dark-700 flex items-center justify-between gap-2">
+                <button 
+                    @click="currentBarber = { id: {{ b.id }}, name: '{{ b.name|replace('\'', '\\\'') }}', balance: {{ item.balance }} }; payoutModal = true"
+                    {% if item.balance <= 0 %}disabled{% endif %}
+                    class="px-3 py-1.5 {% if item.balance > 0 %}bg-emerald-600 hover:bg-emerald-500 text-white shadow{% else %}bg-dark-700 text-slate-500 cursor-not-allowed{% endif %} rounded-lg text-xs font-semibold transition-colors flex items-center space-x-1">
+                    <i class="fa-solid fa-money-bill-transfer text-[10px]"></i>
+                    <span>Pagar Comissão</span>
+                </button>
+
+                <div class="flex items-center space-x-1">
+                    <button 
+                        @click="currentBarber = { id: {{ b.id }}, name: '{{ b.name|replace('\'', '\\\'') }}', phone: '{{ (b.phone or '')|replace('\'', '\\\'') }}', email: '{{ (b.email or '')|replace('\'', '\\\'') }}', commission_percent: {{ b.commission_percent }}, product_commission_percent: {{ b.product_commission_percent }}, is_active: {{ 'true' if b.is_active else 'false' }} }; editBarberModal = true"
+                        class="p-1.5 text-slate-400 hover:text-white bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors" title="Editar barbeiro">
+                        <i class="fa-solid fa-pen-to-square text-xs"></i>
+                    </button>
+                    <form action="/barbers/{{ b.id }}/delete" method="POST" onsubmit="return confirm('Deseja realmente excluir este barbeiro?');" class="inline">
+                        <button type="submit" class="p-1.5 text-slate-500 hover:text-red-400 rounded-lg transition-colors" title="Remover barbeiro">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-dark-800 border border-dark-600 rounded-2xl p-12 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-2xl mx-auto mb-4">
+            <i class="fa-solid fa-user-group"></i>
+        </div>
+        <h4 class="text-base font-bold text-white">Nenhum barbeiro cadastrado</h4>
+        <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+            Cadastre os profissionais da barbearia e configure as porcentagens de comissão de cada um.
+        </p>
+        <button @click="newBarberModal = true" class="mt-4 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-dark-900 font-bold rounded-xl text-xs inline-flex items-center space-x-1.5 shadow">
+            <i class="fa-solid fa-plus"></i>
+            <span>Cadastrar Barbeiro</span>
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- MODAL: Novo Barbeiro -->
+    <div x-show="newBarberModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+        <div @click.away="newBarberModal = false" class="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus text-amber-400"></i>
+                    <span>Cadastrar Novo Barbeiro</span>
+                </h3>
+                <button @click="newBarberModal = false" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form action="/barbers/new" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Nome do Barbeiro</label>
+                    <input type="text" name="name" required placeholder="Ex: Lucas Navalha"
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">WhatsApp / Telefone</label>
+                        <input type="text" name="phone" placeholder="(11) 98888-8888"
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">E-mail</label>
+                        <input type="email" name="email" placeholder="lucas@barbearia.com"
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Comissão Serviços (%)</label>
+                        <input type="number" step="1" min="0" max="100" name="commission_percent" value="50" required
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                        <span class="text-[10px] text-slate-500">Ex: 50% por corte</span>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Comissão Produtos (%)</label>
+                        <input type="number" step="1" min="0" max="100" name="product_commission_percent" value="10" required
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                        <span class="text-[10px] text-slate-500">Ex: 10% por venda</span>
+                    </div>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" @click="newBarberModal = false" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded-xl text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-dark-900 rounded-xl text-xs font-bold shadow">
+                        Salvar Barbeiro
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Editar Barbeiro -->
+    <div x-show="editBarberModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+        <div @click.away="editBarberModal = false" class="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-amber-400"></i>
+                    <span>Editar Barbeiro & Comissão</span>
+                </h3>
+                <button @click="editBarberModal = false" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form :action="'/barbers/' + currentBarber.id + '/edit'" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Nome do Barbeiro</label>
+                    <input type="text" name="name" x-model="currentBarber.name" required
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Telefone / WhatsApp</label>
+                        <input type="text" name="phone" x-model="currentBarber.phone"
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">E-mail</label>
+                        <input type="email" name="email" x-model="currentBarber.email"
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Comissão Serviços (%)</label>
+                        <input type="number" step="1" min="0" max="100" name="commission_percent" x-model="currentBarber.commission_percent" required
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Comissão Produtos (%)</label>
+                        <input type="number" step="1" min="0" max="100" name="product_commission_percent" x-model="currentBarber.product_commission_percent" required
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2 pt-1">
+                    <input type="checkbox" id="barber_active" name="is_active" value="true" :checked="currentBarber.is_active"
+                        class="rounded bg-dark-900 border-dark-600 text-amber-500 focus:ring-0">
+                    <label for="barber_active" class="text-xs text-slate-300">Barbeiro em atividade</label>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" @click="editBarberModal = false" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded-xl text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-dark-900 rounded-xl text-xs font-bold shadow">
+                        Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Pagar Repasse de Comissão -->
+    <div x-show="payoutModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+        <div @click.away="payoutModal = false" class="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-money-bill-transfer text-emerald-400"></i>
+                    <span>Repassar Comissão</span>
+                </h3>
+                <button @click="payoutModal = false" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form action="/finances/commission/payout" method="POST" class="space-y-4">
+                <input type="hidden" name="barber_id" :value="currentBarber.id">
+                
+                <div class="p-3 bg-dark-900 rounded-xl border border-dark-700 flex justify-between items-center text-xs">
+                    <span class="text-slate-400">Barbeiro:</span>
+                    <span class="font-bold text-white" x-text="currentBarber.name"></span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Valor do Repasse (R$)</label>
+                    <input type="number" step="0.50" min="0.01" name="amount" :value="currentBarber.balance" required
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Método de Repasse</label>
+                    <select name="payment_method" class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                        <option value="pix">PIX</option>
+                        <option value="cash">Dinheiro em espécie</option>
+                        <option value="transfer">Transferência Bancária</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Observações (opcional)</label>
+                    <input type="text" name="notes" placeholder="Ex: Fechamento semanal"
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" @click="payoutModal = false" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded-xl text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow">
+                        Confirmar Pagamento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

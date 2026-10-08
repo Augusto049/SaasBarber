@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}Produtos & Estoque - {{ barbershop.name }}{% endblock %}
+{% block page_title %}Produtos & Controle de Estoque{% endblock %}
+
+{% block content %}
+<div x-data="{ newProductModal: false, editProductModal: false, sellProductModal: false, currentProduct: {} }" class="space-y-6">
+
+    {% if archived_notice %}
+    <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+        <i class="fa-solid fa-box-archive"></i>
+        <span>Este produto já possui vendas registradas, então foi arquivado para preservar o histórico. Ele não aparecerá em novas vendas.</span>
+    </div>
+    {% endif %}
+
+    <!-- Cabeçalho com Ações -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-lg font-bold text-white">Estoque de Produtos</h3>
+            <p class="text-xs text-slate-400 mt-0.5">
+                Cadastre pomadas, óleos, minoxidil e bebidas. Realize vendas diretas no balcão calculando a comissão do barbeiro.
+            </p>
+        </div>
+        <div class="flex items-center space-x-2 shrink-0">
+            <button @click="sellProductModal = true" {% if not active_products %}disabled{% endif %} class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition-all shadow">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <span>Venda Rápida (Balcão)</span>
+            </button>
+            <button @click="newProductModal = true" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-dark-900 font-bold rounded-xl text-xs flex items-center space-x-2 transition-all shadow-lg shadow-amber-500/20">
+                <i class="fa-solid fa-plus"></i>
+                <span>Novo Produto</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Grid de Produtos -->
+    {% if products %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {% for p in products %}
+        <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 flex flex-col justify-between hover:border-amber-500/40 transition-all shadow-sm">
+            <div>
+                <div class="flex items-start justify-between mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-pump-soap"></i>
+                    </div>
+                    <div>
+                        {% if not p.is_active %}
+                        <span class="mb-1 block w-fit px-2 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-300">Arquivado</span>
+                        {% endif %}
+                        {% if p.stock_quantity <= 3 %}
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 flex items-center gap-1">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Baixo ({{ p.stock_quantity }})
+                        </span>
+                        {% else %}
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            {{ p.stock_quantity }} em estoque
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <h4 class="font-bold text-white text-base">{{ p.name }}</h4>
+                <p class="text-xs text-slate-400 mt-1 line-clamp-2">{{ p.description or 'Sem descrição.' }}</p>
+
+                <div class="mt-4 pt-3 border-t border-dark-700 grid grid-cols-2 gap-2">
+                    <div>
+                        <span class="text-[10px] text-slate-400 block">Preço de Venda</span>
+                        <span class="text-lg font-black text-amber-400">R$ {{ "%.2f"|format(p.sale_price)|replace('.', ',') }}</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] text-slate-400 block">Custo</span>
+                        <span class="text-xs font-semibold text-slate-400">R$ {{ "%.2f"|format(p.cost_price)|replace('.', ',') }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="mt-5 pt-3 border-t border-dark-700 flex items-center justify-between">
+                {% if p.is_active %}
+                <button 
+                    @click="currentProduct = { id: {{ p.id }}, name: '{{ p.name|replace('\'', '\\\'') }}', price: {{ p.sale_price }} }; sellProductModal = true"
+                    class="px-3 py-1.5 bg-dark-700 hover:bg-dark-600 text-amber-400 rounded-lg text-xs font-semibold transition-colors flex items-center space-x-1 border border-dark-600">
+                    <i class="fa-solid fa-barcode text-[10px]"></i>
+                    <span>Vender</span>
+                </button>
+                {% else %}
+                <span class="text-[11px] text-slate-500">Fora de novas vendas</span>
+                {% endif %}
+
+                <div class="flex items-center space-x-1">
+                    <button 
+                        @click="currentProduct = { id: {{ p.id }}, name: '{{ p.name|replace('\'', '\\\'') }}', cost_price: {{ p.cost_price }}, sale_price: {{ p.sale_price }}, stock_quantity: {{ p.stock_quantity }}, description: '{{ (p.description or '')|replace('\'', '\\\'') }}', is_active: {{ 'true' if p.is_active else 'false' }} }; editProductModal = true"
+                        class="p-1.5 text-slate-400 hover:text-white bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors">
+                        <i class="fa-solid fa-pen-to-square text-xs"></i>
+                    </button>
+                    <form action="/products/{{ p.id }}/delete" method="POST" onsubmit="return confirm('Deseja realmente remover este produto?');" class="inline">
+                        <button type="submit" class="p-1.5 text-slate-500 hover:text-red-400 rounded-lg transition-colors">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-dark-800 border border-dark-600 rounded-2xl p-12 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-2xl mx-auto mb-4">
+            <i class="fa-solid fa-box-open"></i>
+        </div>
+        <h4 class="text-base font-bold text-white">Nenhum produto cadastrado</h4>
+        <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+            Cadastre pomadas, shampoos, pós para penteado e produtos para barba para faturar mais.
+        </p>
+        <button @click="newProductModal = true" class="mt-4 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-dark-900 font-bold rounded-xl text-xs inline-flex items-center space-x-1.5 shadow">
+            <i class="fa-solid fa-plus"></i>
+            <span>Cadastrar Primeiro Produto</span>
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Tabela de Vendas Recentes de Produtos -->
+    {% if recent_sales %}
+    <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 shadow-sm mt-8">
+        <h4 class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-receipt text-amber-400"></i>
+            <span>Histórico de Vendas no Balcão</span>
+        </h4>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-dark-600 text-slate-400 uppercase text-[10px]">
+                        <th class="pb-2">Data/Hora</th>
+                        <th class="pb-2">Produto</th>
+                        <th class="pb-2">Qtd</th>
+                        <th class="pb-2">Total</th>
+                        <th class="pb-2">Barbeiro</th>
+                        <th class="pb-2 text-right">Comissão Barbeiro</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-700">
+                    {% for sale in recent_sales %}
+                    <tr>
+                        <td class="py-2.5 text-slate-400">{{ sale.created_at.strftime('%d/%m %H:%M') }}</td>
+                        <td class="py-2.5 font-semibold text-slate-200">{{ sale.product.name }}</td>
+                        <td class="py-2.5 text-slate-300">{{ sale.quantity }}x</td>
+                        <td class="py-2.5 font-bold text-emerald-400">R$ {{ "%.2f"|format(sale.total_price)|replace('.', ',') }}</td>
+                        <td class="py-2.5 text-slate-300">{{ sale.barber.name if sale.barber else 'Barbearia (Direto)' }}</td>
+                        <td class="py-2.5 text-right font-bold text-amber-400">R$ {{ "%.2f"|format(sale.barber_commission_amount)|replace('.', ',') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- MODAL: Novo Produto -->
+    <div x-show="newProductModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+        <div @click.away="newProductModal = false" class="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-box-open text-amber-400"></i>
+                    <span>Cadastrar Novo Produto</span>
+                </h3>
+                <button @click="newProductModal = false" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form action="/products/new" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Nome do Produto</label>
+                    <input type="text" name="name" required placeholder="Ex: Pomada Matte Modeladora Efeito Seco"
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Preço Venda (R$)</label>
+                        <input type="number" step="0.50" min="0" name="sale_price" required placeholder="35.00"
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Custo (R$)</label>
+                        <input type="number" step="0.50" min="0" name="cost_price" value="15.00"
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Qtd Estoque</label>
+                        <input type="number" min="0" name="stock_quantity" value="10" required
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Descrição (opcional)</label>
+                    <textarea name="description" rows="2" placeholder="Ex: Fixação forte e acabamento fosco."
+                        class="w-full px-3.5 py-2 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"></textarea>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" @click="newProductModal = false" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded-xl text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-dark-900 rounded-xl text-xs font-bold shadow">
+                        Salvar Produto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Venda de Balcão -->
+    <div x-show="sellProductModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+        <div @click.away="sellProductModal = false" class="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-cart-shopping text-emerald-400"></i>
+                    <span>Registrar Venda no Balcão</span>
+                </h3>
+                <button @click="sellProductModal = false" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form action="/products/sell" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Selecione o Produto</label>
+                    <select name="product_id" required class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                        {% for p in active_products %}
+                        <option value="{{ p.id }}">{{ p.name }} - R$ {{ "%.2f"|format(p.sale_price)|replace('.', ',') }} (Estoque: {{ p.stock_quantity }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Quantidade</label>
+                        <input type="number" min="1" name="quantity" value="1" required
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Forma de Pagamento</label>
+                        <select name="payment_method" class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                            <option value="pix">PIX</option>
+                            <option value="card">Cartão</option>
+                            <option value="cash">Dinheiro</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Barbeiro Indicador / Vendedor</label>
+                    <select name="barber_id" class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                        <option value="0">Nenhum (Venda direta da barbearia)</option>
+                        {% for b in barbers %}
+                        <option value="{{ b.id }}">{{ b.name }} (Comissão: {{ b.product_commission_percent }}%)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" @click="sellProductModal = false" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded-xl text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow">
+                        Finalizar Venda
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Editar Produto -->
+    <div x-show="editProductModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+        <div @click.away="editProductModal = false" class="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-amber-400"></i>
+                    <span>Editar Produto</span>
+                </h3>
+                <button @click="editProductModal = false" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form :action="'/products/' + currentProduct.id + '/edit'" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Nome</label>
+                    <input type="text" name="name" x-model="currentProduct.name" required
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Preço Venda</label>
+                        <input type="number" step="0.50" min="0" name="sale_price" x-model="currentProduct.sale_price" required
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Custo</label>
+                        <input type="number" step="0.50" min="0" name="cost_price" x-model="currentProduct.cost_price"
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Estoque</label>
+                        <input type="number" min="0" name="stock_quantity" x-model="currentProduct.stock_quantity" required
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Descrição</label>
+                    <textarea name="description" rows="2" x-model="currentProduct.description"
+                        class="w-full px-3.5 py-2 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"></textarea>
+                </div>
+
+                <div class="flex items-center space-x-2 pt-1">
+                    <input type="checkbox" id="prod_active" name="is_active" value="true" :checked="currentProduct.is_active"
+                        class="rounded bg-dark-900 border-dark-600 text-amber-500 focus:ring-0">
+                    <label for="prod_active" class="text-xs text-slate-300">Produto ativo no catálogo</label>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" @click="editProductModal = false" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded-xl text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-dark-900 rounded-xl text-xs font-bold shadow">
+                        Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Agendamentos - {{ barbershop.name }}{% endblock %}
+{% block page_title %}Agenda de Atendimentos{% endblock %}
+
+{% block content %}
+<div x-data="{ newAppointmentModal: false, completeModal: false, currentApt: {} }" class="space-y-6">
+
+    <!-- Cabeçalho -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-lg font-bold text-white">Agenda & Histórico de Cortes</h3>
+            <p class="text-xs text-slate-400 mt-0.5">
+                Acompanhe agendamentos confirmados, antecipações pagas via Mercado Pago e clientes do clube de assinatura.
+            </p>
+        </div>
+        <button @click="newAppointmentModal = true" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-dark-900 font-bold rounded-xl text-xs flex items-center space-x-2 transition-all shadow-lg shadow-amber-500/20 shrink-0">
+            <i class="fa-solid fa-calendar-plus"></i>
+            <span>Agendar Novo Cliente</span>
+        </button>
+    </div>
+
+    <!-- Tabela de Agendamentos -->
+    <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 shadow-sm">
+        {% if appointments %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-dark-600 text-slate-400 uppercase text-[10px]">
+                        <th class="pb-3">Data e Hora</th>
+                        <th class="pb-3">Cliente</th>
+                        <th class="pb-3">Serviço</th>
+                        <th class="pb-3">Barbeiro</th>
+                        <th class="pb-3">Valor / Comissão</th>
+                        <th class="pb-3">Pagamento</th>
+                        <th class="pb-3">Status</th>
+                        <th class="pb-3 text-right">Ação</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-700">
+                    {% for apt in appointments %}
+                    <tr class="hover:bg-dark-700/40 transition-colors">
+                        <td class="py-3 font-semibold text-white whitespace-nowrap">
+                            {{ apt.date_time.strftime('%d/%m/%Y') }}
+                            <div class="text-[11px] text-amber-400 font-bold">{{ apt.date_time.strftime('%H:%M') }}</div>
+                        </td>
+                        <td class="py-3 text-slate-200">
+                            {{ apt.customer_name }}
+                            <div class="text-[10px] text-slate-400">{{ apt.customer_phone }}</div>
+                        </td>
+                        <td class="py-3 text-slate-300">
+                            {{ apt.service.name }}
+                        </td>
+                        <td class="py-3 text-slate-300 whitespace-nowrap">
+                            {{ apt.barber.name }}
+                        </td>
+                        <td class="py-3">
+                            <span class="font-bold text-white">R$ {{ "%.2f"|format(apt.total_price)|replace('.', ',') }}</span>
+                            <div class="text-[10px] text-amber-400">Comissão: R$ {{ "%.2f"|format(apt.barber_commission_amount)|replace('.', ',') }}</div>
+                        </td>
+                        <td class="py-3 whitespace-nowrap">
+                            {% if apt.is_paid_in_advance or apt.payment_status == 'approved' %}
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center w-fit gap-1">
+                                <i class="fa-solid fa-circle-check"></i> Pago Antecipado MP
+                            </span>
+                            {% elif apt.payment_status == 'subscription' %}
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center w-fit gap-1">
+                                <i class="fa-solid fa-crown"></i> Assinante do Clube
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-300">
+                                Pagar no Local
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3">
+                            {% if apt.status == 'completed' %}
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">Concluído</span>
+                            {% elif apt.status == 'confirmed' %}
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-300">Confirmado</span>
+                            {% elif apt.status == 'scheduled' %}
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">Aguardando</span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-300">Cancelado</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 text-right whitespace-nowrap space-x-1.5">
+                            {% if apt.status != 'completed' and apt.status != 'canceled' %}
+                            <button 
+                                @click="currentApt = { id: {{ apt.id }}, customer: '{{ apt.customer_name|replace('\'', '\\\'') }}', service: '{{ apt.service.name|replace('\'', '\\\'') }}', price: {{ apt.total_price }}, is_paid: {{ 'true' if (apt.is_paid_in_advance or apt.payment_status == 'approved' or apt.payment_status == 'subscription') else 'false' }} }; completeModal = true"
+                                class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold transition-colors shadow">
+                                Concluir Atendimento
+                            </button>
+                            <form action="/appointments/{{ apt.id }}/cancel" method="POST" onsubmit="return confirm('Deseja realmente cancelar este agendamento?');" class="inline">
+                                <button type="submit" class="p-1 text-slate-500 hover:text-red-400 rounded transition-colors" title="Cancelar agendamento">
+                                    <i class="fa-solid fa-ban text-xs"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="text-[11px] text-slate-500 font-medium">Finalizado</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-12 text-center text-slate-400">
+            <i class="fa-regular fa-calendar-check text-3xl mb-3 text-slate-600"></i>
+            <h4 class="text-base font-bold text-white">Nenhum agendamento encontrado</h4>
+            <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                Cadastre um agendamento manual ou envie o link da barbearia para seus clientes agendarem diretamente pelo celular.
+            </p>
+            <button @click="newAppointmentModal = true" class="mt-4 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-dark-900 font-bold rounded-xl text-xs inline-flex items-center space-x-1.5 shadow">
+                <i class="fa-solid fa-plus"></i>
+                <span>Novo Agendamento</span>
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- MODAL: Novo Agendamento -->
+    <div x-show="newAppointmentModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+        <div @click.away="newAppointmentModal = false" class="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-plus text-amber-400"></i>
+                    <span>Novo Agendamento</span>
+                </h3>
+                <button @click="newAppointmentModal = false" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form action="/appointments/new" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Nome do Cliente</label>
+                    <input type="text" name="customer_name" required placeholder="Ex: Felipe Ramos"
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">WhatsApp</label>
+                        <input type="text" name="customer_phone" required placeholder="(11) 98888-7777"
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">E-mail (opcional)</label>
+                        <input type="email" name="customer_email" placeholder="cliente@email.com"
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Serviço</label>
+                        <select name="service_id" required class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                            {% for s in services %}
+                            <option value="{{ s.id }}">{{ s.name }} (R$ {{ "%.2f"|format(s.price)|replace('.', ',') }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Barbeiro</label>
+                        <select name="barber_id" required class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                            {% for b in barbers %}
+                            <option value="{{ b.id }}">{{ b.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Data e Horário</label>
+                    <input type="datetime-local" name="date_str" required
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="flex items-center space-x-2 pt-1">
+                    <input type="checkbox" id="sub_check" name="is_subscription_client" value="true"
+                        class="rounded bg-dark-900 border-dark-600 text-amber-500 focus:ring-0">
+                    <label for="sub_check" class="text-xs text-slate-300">Cliente é assinante do clube (corte gratuito)</label>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" @click="newAppointmentModal = false" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded-xl text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-dark-900 rounded-xl text-xs font-bold shadow">
+                        Salvar Agendamento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Concluir Atendimento -->
+    <div x-show="completeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+        <div @click.away="completeModal = false" class="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                    <span>Finalizar Atendimento</span>
+                </h3>
+                <button @click="completeModal = false" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form :action="'/appointments/' + currentApt.id + '/complete'" method="POST" class="space-y-4">
+                <div class="p-3 bg-dark-900 rounded-xl border border-dark-700 space-y-1 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Cliente:</span>
+                        <span class="font-bold text-white" x-text="currentApt.customer"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Serviço:</span>
+                        <span class="text-slate-200" x-text="currentApt.service"></span>
+                    </div>
+                    <div class="flex justify-between pt-1 border-t border-dark-800 font-bold">
+                        <span class="text-slate-300">Valor Total:</span>
+                        <span class="text-amber-400" x-text="'R$ ' + currentApt.price?.toFixed(2)"></span>
+                    </div>
+                </div>
+
+                <div x-show="!currentApt.is_paid">
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Como o cliente está pagando?</label>
+                    <select name="payment_method" class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                        <option value="pix">PIX no Local</option>
+                        <option value="card_in_person">Cartão Débito/Crédito na Máquina</option>
+                        <option value="cash">Dinheiro em Espécie</option>
+                    </select>
+                </div>
+
+                <div x-show="currentApt.is_paid" class="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs">
+                    <i class="fa-solid fa-check-double mr-1"></i> Este atendimento já foi pago antecipadamente ou coberto pela mensalidade.
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" @click="completeModal = false" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded-xl text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow">
+                        Confirmar e Concluir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

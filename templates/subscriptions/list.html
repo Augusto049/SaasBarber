@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+
+{% block title %}Assinaturas - {{ barbershop.name }}{% endblock %}
+{% block page_title %}Assinaturas & Planos Mensais{% endblock %}
+
+{% block content %}
+<div x-data="{ newPlanModal: false, editPlanModal: false, newSubscriberModal: false, currentPlan: {} }" class="space-y-8">
+
+    {% if archived_notice %}
+    <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+        <i class="fa-solid fa-box-archive"></i>
+        <span>Este plano possui assinantes vinculados e foi arquivado para preservar o histórico.</span>
+    </div>
+    {% endif %}
+    {% if deleted_notice %}
+    <div class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>Plano excluído com sucesso.</span>
+    </div>
+    {% endif %}
+
+    <!-- Banner informativo dos planos de assinatura -->
+    <div class="bg-gradient-to-r from-amber-500/20 via-dark-800 to-dark-800 border border-amber-500/40 rounded-2xl p-5 md:p-6 shadow-lg">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-start space-x-4">
+                <div class="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-2xl shrink-0">
+                    <i class="fa-solid fa-crown"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <span>Receita Recorrente Previsível (MRR)</span>
+                        <span class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Clube de Assinatura</span>
+                    </h3>
+                    <p class="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                        Seus clientes pagam uma mensalidade fixa (ex: <strong>R$ 89,00/mês</strong>) no cartão pelo <strong>Mercado Pago</strong> e podem cortar o cabelo quantas vezes quiserem no mês. Você garante dinheiro garantido todo mês e fideliza o cliente!
+                    </p>
+                </div>
+            </div>
+            <div class="bg-dark-900/80 px-5 py-3 rounded-xl border border-dark-600 text-center shrink-0">
+                <span class="text-[10px] text-slate-400 block uppercase font-semibold">Faturamento Recorrente Mensal</span>
+                <span class="text-2xl font-black text-amber-400">R$ {{ "%.2f"|format(mrr)|replace('.', ',') }}</span>
+                <span class="text-[10px] text-emerald-400 block mt-0.5">{{ subscribers|length }} assinantes ativos</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seção 1: Planos de Assinatura (Configuráveis pelo Dono) -->
+    <div class="space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+                <h4 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-amber-400"></i>
+                    <span>{{ 'Planos Arquivados' if show_archived else 'Planos de Mensalidade' }}</span>
+                </h4>
+                <p class="text-xs text-slate-400">{{ 'Planos fora do catálogo público, mantidos para preservar assinaturas antigas.' if show_archived else 'Crie, edite ou remova os planos oferecidos aos clientes.' }}</p>
+            </div>
+            <div class="flex items-center gap-2">
+                {% if show_archived %}
+                <a href="/subscriptions" class="px-3 py-2 bg-dark-700 hover:bg-dark-600 text-slate-200 font-semibold rounded-xl text-xs transition-colors">Voltar aos ativos</a>
+                {% elif archived_count %}
+                <a href="/subscriptions?show_archived=true" class="px-3 py-2 bg-dark-700 hover:bg-dark-600 text-slate-200 font-semibold rounded-xl text-xs transition-colors">Ver arquivados ({{ archived_count }})</a>
+                {% endif %}
+                {% if not show_archived %}
+                <button @click="newPlanModal = true" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-dark-900 font-bold rounded-xl text-xs flex items-center space-x-2 transition-all shadow-md shrink-0">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Criar Novo Plano</span>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if plans %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {% for plan in plans %}
+            <div class="bg-dark-800 border border-dark-600 rounded-2xl p-6 flex flex-col justify-between hover:border-amber-500/50 transition-all shadow-md relative overflow-hidden group">
+                <div class="absolute -right-10 -top-10 w-28 h-28 bg-amber-500/5 rounded-full pointer-events-none group-hover:scale-150 transition-transform"></div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+                            Plano Mensal
+                        </span>
+                        {% if plan.is_active %}
+                        <span class="w-2 h-2 rounded-full bg-emerald-400" title="Ativo"></span>
+                        {% else %}
+                        <span class="w-2 h-2 rounded-full bg-slate-500" title="Inativo"></span>
+                        {% endif %}
+                    </div>
+
+                    <h4 class="text-xl font-black text-white">{{ plan.name }}</h4>
+                    <p class="text-xs text-slate-400 mt-1">{{ plan.description or 'Acesso aos serviços da barbearia com mensalidade fixa.' }}</p>
+
+                    <div class="my-5 py-4 border-y border-dark-700">
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-xs text-slate-400">R$</span>
+                            <span class="text-3xl font-black text-amber-400">{{ "%.2f"|format(plan.price)|replace('.', ',') }}</span>
+                            <span class="text-xs text-slate-400">/mês</span>
+                        </div>
+                        <p class="text-[11px] text-emerald-400 mt-1 flex items-center gap-1 font-semibold">
+                            <i class="fa-solid fa-circle-check text-[10px]"></i>
+                            {% if plan.included_cuts_per_month >= 999 %}
+                            <span>Cortes Ilimitados no mês</span>
+                            {% else %}
+                            <span>Até {{ plan.included_cuts_per_month }} cortes no mês</span>
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <div class="space-y-1.5 text-xs text-slate-300">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-check text-amber-400 text-[10px]"></i>
+                            <span>{{ plan.included_services_text }}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-check text-amber-400 text-[10px]"></i>
+                            <span>Sem taxa de adesão ou fidelidade</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-check text-amber-400 text-[10px]"></i>
+                            <span>Cobrança automática Mercado Pago</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-3 border-t border-dark-700 flex items-center justify-between gap-2">
+                    <button 
+                        @click="currentPlan = { id: {{ plan.id }}, name: '{{ plan.name|replace('\'', '\\\'') }}', price: {{ plan.price }}, cuts: {{ plan.included_cuts_per_month }}, text: '{{ (plan.included_services_text or '')|replace('\'', '\\\'') }}', desc: '{{ (plan.description or '')|replace('\'', '\\\'') }}', is_active: {{ 'true' if plan.is_active else 'false' }} }; editPlanModal = true"
+                        class="px-3.5 py-1.5 bg-dark-700 hover:bg-dark-600 text-slate-200 rounded-lg text-xs font-semibold transition-colors flex items-center space-x-1.5 border border-dark-600">
+                        <i class="fa-solid fa-pen text-[10px]"></i>
+                        <span>Editar Valor & Regras</span>
+                    </button>
+                    <div class="flex items-center gap-2">
+                        {% if not show_archived %}
+                        <form action="/subscriptions/plans/{{ plan.id }}/delete" method="POST" onsubmit="return confirm('Deseja remover este plano? Assinantes existentes serão preservados.');">
+                            <button type="submit" aria-label="Excluir plano {{ plan.name }}" title="Excluir plano" class="grid h-8 w-8 place-items-center rounded-lg text-slate-500 transition hover:bg-red-500/10 hover:text-red-400">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                        <span class="text-[11px] text-slate-500 font-mono">ID #{{ plan.id }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-dark-800 border border-dark-600 rounded-2xl p-8 text-center">
+            <p class="text-xs text-slate-400">{{ 'Nenhum plano arquivado.' if show_archived else 'Nenhum plano cadastrado. Crie o primeiro plano mensal para seus clientes.' }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Seção 2: Gestão de Assinantes Ativos -->
+    <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+                <h4 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-users text-amber-400"></i>
+                    <span>Assinantes do Clube</span>
+                </h4>
+                <p class="text-xs text-slate-400">Controle o uso de cortes de cada cliente assinante.</p>
+            </div>
+            <button @click="newSubscriberModal = true" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-colors shadow">
+                <i class="fa-solid fa-user-plus text-[10px]"></i>
+                <span>Matricular Assinante (Balcão)</span>
+            </button>
+        </div>
+
+        {% if subscribers %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-dark-600 text-slate-400 uppercase text-[10px]">
+                        <th class="pb-3">Cliente</th>
+                        <th class="pb-3">Plano</th>
+                        <th class="pb-3">Valor</th>
+                        <th class="pb-3">Cortes Usados no Mês</th>
+                        <th class="pb-3">Próxima Cobrança</th>
+                        <th class="pb-3">Status</th>
+                        <th class="pb-3 text-right">Ação Rápida</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-700">
+                    {% for sub in subscribers %}
+                    <tr class="hover:bg-dark-700/40 transition-colors">
+                        <td class="py-3 font-semibold text-white">
+                            {{ sub.customer_name }}
+                            <div class="text-[10px] text-slate-400">{{ sub.customer_phone or sub.customer_email }}</div>
+                        </td>
+                        <td class="py-3 text-amber-400 font-bold">
+                            {{ sub.plan.name }}
+                        </td>
+                        <td class="py-3 text-slate-200">
+                            R$ {{ "%.2f"|format(sub.plan.price)|replace('.', ',') }}/mês
+                        </td>
+                        <td class="py-3">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-dark-900 border border-dark-700 text-amber-300">
+                                {{ sub.cuts_used_this_month }} cortes
+                            </span>
+                        </td>
+                        <td class="py-3 text-slate-400">
+                            {{ sub.next_billing_date.strftime('%d/%m/%Y') if sub.next_billing_date else 'Em 30 dias' }}
+                        </td>
+                        <td class="py-3">
+                            {% if sub.status == 'active' %}
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Ativo</span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">Cancelado</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 text-right space-x-1.5 whitespace-nowrap">
+                            {% if sub.status == 'active' %}
+                            <form action="/subscriptions/{{ sub.id }}/use-cut" method="POST" class="inline">
+                                <button type="submit" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-dark-900 rounded text-[11px] font-bold transition-colors shadow">
+                                    <i class="fa-solid fa-scissors text-[10px]"></i> +1 Corte
+                                </button>
+                            </form>
+                            {% endif %}
+                            <form action="/subscriptions/{{ sub.id }}/toggle-status" method="POST" class="inline">
+                                <button type="submit" class="px-2 py-1 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded text-[11px] transition-colors border border-dark-600">
+                                    {{ 'Pausar' if sub.status == 'active' else 'Reativar' }}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-8 text-center text-slate-400">
+            <i class="fa-solid fa-user-slash text-2xl mb-2 text-slate-600"></i>
+            <p class="text-xs">Nenhum cliente assinou o clube ainda.</p>
+            <p class="text-[11px] text-slate-500 mt-1">Os clientes podem assinar diretamente pelo link público da barbearia ou você pode matriculá-los acima.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- MODAL: Novo Plano -->
+    <div x-show="newPlanModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+        <div @click.away="newPlanModal = false" class="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-crown text-amber-400"></i>
+                    <span>Criar Novo Plano de Mensalidade</span>
+                </h3>
+                <button @click="newPlanModal = false" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form action="/subscriptions/plans/new" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Nome do Plano</label>
+                    <input type="text" name="name" required placeholder="Ex: Clube VIP Cortes Ilimitados"
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Valor Mensal (R$)</label>
+                        <input type="number" step="1.00" min="10" name="price" value="89.00" required
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                        <span class="text-[10px] text-slate-500">Ex: 89,00 por mês</span>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Limite de Cortes / Mês</label>
+                        <input type="number" min="1" name="included_cuts_per_month" value="999" required
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                        <span class="text-[10px] text-slate-500">999 = Ilimitado</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Benefícios Incluídos (Texto para o cliente)</label>
+                    <input type="text" name="included_services_text" value="Cortes de cabelo ilimitados + 10% off em produtos" required
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Descrição</label>
+                    <textarea name="description" rows="2" placeholder="Ex: Venha cortar quantas vezes quiser durante o mês todo por um valor único."
+                        class="w-full px-3.5 py-2 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"></textarea>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" @click="newPlanModal = false" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded-xl text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-dark-900 rounded-xl text-xs font-bold shadow">
+                        Salvar Plano
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Editar Plano -->
+    <div x-show="editPlanModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+        <div @click.away="editPlanModal = false" class="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-amber-400"></i>
+                    <span>Editar Plano de Mensalidade</span>
+                </h3>
+                <button @click="editPlanModal = false" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form :action="'/subscriptions/plans/' + currentPlan.id + '/edit'" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Nome do Plano</label>
+                    <input type="text" name="name" x-model="currentPlan.name" required
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Valor Mensal (R$)</label>
+                        <input type="number" step="1.00" min="10" name="price" x-model="currentPlan.price" required
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Limite Cortes/Mês</label>
+                        <input type="number" min="1" name="included_cuts_per_month" x-model="currentPlan.cuts" required
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Benefícios</label>
+                    <input type="text" name="included_services_text" x-model="currentPlan.text" required
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Descrição</label>
+                    <textarea name="description" rows="2" x-model="currentPlan.desc"
+                        class="w-full px-3.5 py-2 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"></textarea>
+                </div>
+
+                <div class="flex items-center space-x-2 pt-1">
+                    <input type="checkbox" id="plan_active" name="is_active" value="true" :checked="currentPlan.is_active"
+                        class="rounded bg-dark-900 border-dark-600 text-amber-500 focus:ring-0">
+                    <label for="plan_active" class="text-xs text-slate-300">Plano ativo no catálogo público</label>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" @click="editPlanModal = false" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded-xl text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-dark-900 rounded-xl text-xs font-bold shadow">
+                        Atualizar Plano
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Matricular Assinante Manualmente -->
+    <div x-show="newSubscriberModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+        <div @click.away="newSubscriberModal = false" class="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus text-emerald-400"></i>
+                    <span>Matricular Assinante no Balcão</span>
+                </h3>
+                <button @click="newSubscriberModal = false" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form action="/subscriptions/subscribers/new" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Selecione o Plano</label>
+                    <select name="plan_id" required class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                        {% for plan in active_plans %}
+                        <option value="{{ plan.id }}">{{ plan.name }} - R$ {{ "%.2f"|format(plan.price)|replace('.', ',') }}/mês</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Nome do Cliente</label>
+                    <input type="text" name="customer_name" required placeholder="Carlos Souza"
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">WhatsApp</label>
+                        <input type="text" name="customer_phone" placeholder="(11) 97777-7777"
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">E-mail</label>
+                        <input type="email" name="customer_email" required placeholder="carlos@email.com"
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Forma de Pagamento da 1ª Mensalidade</label>
+                    <select name="payment_method" class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                        <option value="pix">PIX</option>
+                        <option value="card">Cartão</option>
+                        <option value="cash">Dinheiro</option>
+                    </select>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" @click="newSubscriberModal = false" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded-xl text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow">
+                        Ativar Assinatura
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

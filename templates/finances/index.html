@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Finanças & Fluxo de Caixa - {{ barbershop.name }}{% endblock %}
+{% block page_title %}Finanças & Fluxo de Caixa{% endblock %}
+
+{% block content %}
+<div x-data="{ newExpenseModal: false, payoutModal: false, currentBarber: {} }" class="space-y-6">
+
+    <!-- Cabeçalho e Ações -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-lg font-bold text-white">Gestão Financeira</h3>
+            <p class="text-xs text-slate-400 mt-0.5">
+                Controle de entradas (cortes, produtos, assinaturas), despesas fixas e repasse de comissões aos profissionais.
+            </p>
+        </div>
+        <div class="flex items-center space-x-2 shrink-0">
+            <button @click="newExpenseModal = true" class="px-4 py-2.5 bg-red-600/90 hover:bg-red-500 text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition-all shadow">
+                <i class="fa-solid fa-arrow-trend-down"></i>
+                <span>Registrar Despesa</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Cards de Resumo Financeiro -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Entradas Totais -->
+        <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider">Entradas (Receitas)</span>
+                <span class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-arrow-down"></i>
+                </span>
+            </div>
+            <div class="text-2xl font-black text-emerald-400">
+                R$ {{ "%.2f"|format(total_income)|replace('.', ',') }}
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">Cortes, vendas e mensalidades</p>
+        </div>
+
+        <!-- Despesas Operacionais -->
+        <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider">Despesas</span>
+                <span class="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-arrow-up"></i>
+                </span>
+            </div>
+            <div class="text-2xl font-black text-red-400">
+                R$ {{ "%.2f"|format(total_expenses)|replace('.', ',') }}
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">Aluguel, contas e produtos</p>
+        </div>
+
+        <!-- Comissões Repassadas -->
+        <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider">Comissões Repassadas</span>
+                <span class="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-hand-holding-dollar"></i>
+                </span>
+            </div>
+            <div class="text-2xl font-black text-orange-400">
+                R$ {{ "%.2f"|format(total_commissions_paid)|replace('.', ',') }}
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">Pago aos barbeiros da equipe</p>
+        </div>
+
+        <!-- Lucro Líquido Real -->
+        <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider">Lucro Líquido</span>
+                <span class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-sack-dollar"></i>
+                </span>
+            </div>
+            <div class="text-2xl font-black {% if net_profit >= 0 %}text-white{% else %}text-red-400{% endif %}">
+                R$ {{ "%.2f"|format(net_profit)|replace('.', ',') }}
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">Sobrou no caixa da barbearia</p>
+        </div>
+    </div>
+
+    <!-- Tabela de Comissões por Barbeiro -->
+    <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 shadow-sm space-y-4">
+        <h4 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-user-group text-amber-400"></i>
+            <span>Resumo de Comissões por Barbeiro</span>
+        </h4>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-dark-600 text-slate-400 uppercase text-[10px]">
+                        <th class="pb-2">Barbeiro</th>
+                        <th class="pb-2">Total Gerado</th>
+                        <th class="pb-2">Já Repassado</th>
+                        <th class="pb-2">Saldo a Pagar</th>
+                        <th class="pb-2 text-right">Ação</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-700">
+                    {% for item in barber_summaries %}
+                    <tr>
+                        <td class="py-3 font-semibold text-white">{{ item.barber.name }}</td>
+                        <td class="py-3 text-slate-300">R$ {{ "%.2f"|format(item.earned)|replace('.', ',') }}</td>
+                        <td class="py-3 text-emerald-400">R$ {{ "%.2f"|format(item.paid)|replace('.', ',') }}</td>
+                        <td class="py-3 font-bold {% if item.balance > 0 %}text-orange-400{% else %}text-slate-400{% endif %}">
+                            R$ {{ "%.2f"|format(item.balance)|replace('.', ',') }}
+                        </td>
+                        <td class="py-3 text-right">
+                            <button 
+                                @click="currentBarber = { id: {{ item.barber.id }}, name: '{{ item.barber.name|replace('\'', '\\\'') }}', balance: {{ item.balance }} }; payoutModal = true"
+                                {% if item.balance <= 0 %}disabled{% endif %}
+                                class="px-3 py-1 {% if item.balance > 0 %}bg-emerald-600 hover:bg-emerald-500 text-white shadow{% else %}bg-dark-700 text-slate-500 cursor-not-allowed{% endif %} rounded-lg text-xs font-semibold transition-colors">
+                                Pagar
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Extrato de Movimentações (Fluxo de Caixa) -->
+    <div class="bg-dark-800 border border-dark-600 rounded-2xl p-5 shadow-sm space-y-4">
+        <h4 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
+            <span>Histórico de Movimentações</span>
+        </h4>
+        {% if records %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-dark-600 text-slate-400 uppercase text-[10px]">
+                        <th class="pb-2.5">Data</th>
+                        <th class="pb-2.5">Tipo</th>
+                        <th class="pb-2.5">Descrição</th>
+                        <th class="pb-2.5">Forma</th>
+                        <th class="pb-2.5 text-right">Valor</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-700">
+                    {% for r in records %}
+                    <tr class="hover:bg-dark-700/30 transition-colors">
+                        <td class="py-3 text-slate-400 whitespace-nowrap">{{ r.date.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td class="py-3">
+                            {% if r.type == 'income' %}
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Receita</span>
+                            {% elif r.type == 'expense' %}
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">Despesa</span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20">Repasse</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 font-medium text-slate-200">{{ r.description }}</td>
+                        <td class="py-3 text-slate-400 uppercase text-[11px]">{{ r.payment_method }}</td>
+                        <td class="py-3 text-right font-black {% if r.type == 'income' %}text-emerald-400{% else %}text-red-400{% endif %}">
+                            {% if r.type == 'income' %}+{% else %}-{% endif %} R$ {{ "%.2f"|format(r.amount)|replace('.', ',') }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-xs text-slate-400 text-center py-6">Nenhum lançamento financeiro registrado.</p>
+        {% endif %}
+    </div>
+
+    <!-- MODAL: Nova Despesa -->
+    <div x-show="newExpenseModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+        <div @click.away="newExpenseModal = false" class="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-trend-down text-red-400"></i>
+                    <span>Registrar Saída / Despesa</span>
+                </h3>
+                <button @click="newExpenseModal = false" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form action="/finances/expense/new" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Descrição do Gasto</label>
+                    <input type="text" name="description" required placeholder="Ex: Aluguel da Barbearia / Conta de Energia / Pomadas"
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Valor (R$)</label>
+                        <input type="number" step="0.50" min="0.01" name="amount" required placeholder="150.00"
+                            class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Categoria</label>
+                        <select name="category" class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                            <option value="rent">Aluguel / Imóvel</option>
+                            <option value="supplies">Insumos & Produtos</option>
+                            <option value="utilities">Água, Luz e Internet</option>
+                            <option value="marketing">Marketing / Anúncios</option>
+                            <option value="other">Outros Gastos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Forma de Pagamento</label>
+                    <select name="payment_method" class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                        <option value="pix">PIX</option>
+                        <option value="card">Cartão</option>
+                        <option value="cash">Dinheiro em Espécie</option>
+                    </select>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" @click="newExpenseModal = false" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded-xl text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow">
+                        Salvar Despesa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Repasse de Comissão -->
+    <div x-show="payoutModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+        <div @click.away="payoutModal = false" class="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-hand-holding-dollar text-emerald-400"></i>
+                    <span>Repassar Comissão</span>
+                </h3>
+                <button @click="payoutModal = false" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form action="/finances/commission/payout" method="POST" class="space-y-4">
+                <input type="hidden" name="barber_id" :value="currentBarber.id">
+                
+                <div class="p-3 bg-dark-900 rounded-xl border border-dark-700 flex justify-between items-center text-xs">
+                    <span class="text-slate-400">Barbeiro:</span>
+                    <span class="font-bold text-white" x-text="currentBarber.name"></span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Valor do Repasse (R$)</label>
+                    <input type="number" step="0.50" min="0.01" name="amount" :value="currentBarber.balance" required
+                        class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Forma de Pagamento</label>
+                    <select name="payment_method" class="w-full px-3.5 py-2.5 bg-dark-900 border border-dark-600 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+                        <option value="pix">PIX</option>
+                        <option value="cash">Dinheiro em Espécie</option>
+                        <option value="transfer">Transferência Bancária</option>
+                    </select>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" @click="payoutModal = false" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-slate-300 rounded-xl text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow">
+                        Confirmar Pagamento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
